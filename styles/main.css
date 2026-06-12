@@ -1,0 +1,112 @@
+:root {
+  color-scheme: light;
+  --ink: #24201c;
+  --muted: #6c6259;
+  --paper: #f8f3e8;
+  --panel: #fff9ed;
+  --road: #2e3440;
+  --accent: #e45d35;
+  --accent-2: #1f9e89;
+  --line: #d8c8ae;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--ink);
+  font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: linear-gradient(180deg, #f3d99f 0%, var(--paper) 58%, #d7eced 100%);
+}
+
+button {
+  font: inherit;
+}
+
+.game-shell {
+  width: min(1100px, calc(100vw - 32px));
+  min-height: 100vh;
+  margin: 0 auto;
+  display: grid;
+  align-content: center;
+  gap: 14px;
+  padding: 24px 0;
+}
+
+.hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 14px;
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  background: rgb(255 249 237 / 86%);
+}
+
+.hud-label {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.hud strong {
+  font-size: 22px;
+}
+
+#restart-button {
+  min-width: 72px;
+  height: 38px;
+  border: 0;
+  border-radius: 7px;
+  color: white;
+  background: var(--accent);
+  cursor: pointer;
+}
+
+#game-canvas {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  display: block;
+  border: 3px solid #3a3028;
+  border-radius: 8px;
+  background: var(--road);
+  box-shadow: 0 16px 40px rgb(58 48 40 / 20%);
+}
+
+.status-panel {
+  padding: 0 2px;
+}
+
+.status-panel h1 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.status-panel p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+@media (max-width: 640px) {
+  .game-shell {
+    width: min(100vw - 20px, 1100px);
+    padding: 14px 0;
+  }
+
+  .hud {
+    gap: 10px;
+  }
+
+  .hud strong {
+    font-size: 18px;
+  }
+
+  .status-panel h1 {
+    font-size: 22px;
+  }
+}
+

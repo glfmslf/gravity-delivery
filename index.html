@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>反重力快递</title>
+    <link rel="stylesheet" href="styles/main.css" />
+  </head>
+  <body>
+    <main class="game-shell">
+      <section class="hud" aria-label="游戏状态">
+        <div>
+          <span class="hud-label">时间</span>
+          <strong id="time-value">60.0</strong>
+        </div>
+        <div>
+          <span class="hud-label">进度</span>
+          <strong id="progress-value">0%</strong>
+        </div>
+        <button id="restart-button" type="button">重开</button>
+      </section>
+
+      <canvas id="game-canvas" width="960" height="540" aria-label="反重力快递游戏画布"></canvas>
+
+      <section class="status-panel" aria-live="polite">
+        <h1>反重力快递</h1>
+        <p id="status-text">方向键左右移动，空格切换重力。</p>
+      </section>
+    </main>
+
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>
+
