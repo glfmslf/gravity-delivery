@@ -2,7 +2,10 @@ export function drawScene(context, canvas, state) {
   context.clearRect(0, 0, canvas.width, canvas.height);
   drawBackground(context, canvas, state.distance);
   drawObstacles(context, state.level.obstacles, state.distance, canvas);
+  drawDeliveries(context, state.level.deliveries, state.distance, canvas, state.completedDeliveries);
+  drawPickups(context, state.level.pickups, state.distance, canvas, state.collectedPickups);
   drawPlayer(context, state.player, state.hitCooldown);
+  drawEndOverlay(context, canvas, state);
 }
 
 function drawBackground(context, canvas, distance) {
@@ -22,6 +25,123 @@ function drawBackground(context, canvas, distance) {
     context.fillRect(offsetX, 116, 34, 10);
     context.fillRect(offsetX + 18, canvas.height - 142, 48, 10);
   }
+}
+
+function drawPickups(context, pickups, distance, canvas, collectedPickups) {
+  pickups.forEach((pickup) => {
+    const x = pickup.x - distance;
+
+    if (collectedPickups.has(pickup.id) || x + pickup.width < -40 || x > canvas.width + 40) {
+      return;
+    }
+
+    const centerX = x + pickup.width / 2;
+    const centerY = pickup.y + pickup.height / 2;
+
+    context.save();
+    context.translate(centerX, centerY);
+
+    context.fillStyle = "#f8d16b";
+    context.beginPath();
+    context.arc(0, 0, pickup.width / 2, 0, Math.PI * 2);
+    context.fill();
+
+    context.strokeStyle = "#74541f";
+    context.lineWidth = 3;
+    context.stroke();
+
+    context.fillStyle = "#2e3440";
+    context.fillRect(-4, -10, 8, 20);
+    context.fillRect(-10, -4, 20, 8);
+
+    context.restore();
+  });
+}
+
+function drawDeliveries(context, deliveries, distance, canvas, completedDeliveries) {
+  deliveries.forEach((delivery) => {
+    const x = delivery.x - distance;
+
+    if (x + delivery.width < -40 || x > canvas.width + 40) {
+      return;
+    }
+
+    const isCompleted = completedDeliveries.has(delivery.id);
+
+    context.save();
+    context.translate(x, delivery.y);
+    context.globalAlpha = isCompleted ? 0.35 : 1;
+
+    context.fillStyle = "#1f9e89";
+    context.fillRect(0, 0, delivery.width, delivery.height);
+
+    context.fillStyle = "#d7fff2";
+    context.fillRect(8, 10, delivery.width - 16, 10);
+    context.fillRect(8, delivery.height - 18, delivery.width - 16, 8);
+
+    context.strokeStyle = "#0c544b";
+    context.lineWidth = 3;
+    context.strokeRect(1.5, 1.5, delivery.width - 3, delivery.height - 3);
+
+    context.fillStyle = "#102f2b";
+    context.font = "bold 13px sans-serif";
+    context.textAlign = "center";
+    context.fillText(delivery.id, delivery.width / 2, delivery.height / 2 + 5);
+
+    if (isCompleted) {
+      context.strokeStyle = "#d7fff2";
+      context.lineWidth = 4;
+      context.beginPath();
+      context.moveTo(16, delivery.height / 2);
+      context.lineTo(28, delivery.height / 2 + 12);
+      context.lineTo(delivery.width - 14, 18);
+      context.stroke();
+    }
+
+    context.restore();
+  });
+}
+
+function drawEndOverlay(context, canvas, state) {
+  if (state.status === "playing") {
+    return;
+  }
+
+  const isSuccess = state.status === "success";
+  const title = isSuccess ? "配送成功" : "配送失败";
+  const detail = isSuccess
+    ? `完成 ${state.completedDeliveries.size}/${state.level.deliveries.length} 单，剩余 ${state.timeLeft.toFixed(1)} 秒`
+    : getFailureDetail(state);
+
+  context.save();
+  context.fillStyle = "rgb(20 24 30 / 72%)";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  context.fillStyle = isSuccess ? "#1f9e89" : "#e45d35";
+  context.fillRect(canvas.width / 2 - 170, canvas.height / 2 - 76, 340, 132);
+
+  context.strokeStyle = "#fff9ed";
+  context.lineWidth = 4;
+  context.strokeRect(canvas.width / 2 - 170, canvas.height / 2 - 76, 340, 132);
+
+  context.fillStyle = "#fff9ed";
+  context.textAlign = "center";
+  context.font = "bold 34px sans-serif";
+  context.fillText(title, canvas.width / 2, canvas.height / 2 - 22);
+
+  context.font = "16px sans-serif";
+  context.fillText(detail, canvas.width / 2, canvas.height / 2 + 14);
+  context.fillText("点击重开再跑一单", canvas.width / 2, canvas.height / 2 + 42);
+
+  context.restore();
+}
+
+function getFailureDetail(state) {
+  if (state.timeLeft <= 0) {
+    return `完成 ${state.completedDeliveries.size}/${state.level.deliveries.length} 单，时间耗尽`;
+  }
+
+  return `完成 ${state.completedDeliveries.size}/${state.level.deliveries.length} 单，漏送订单`;
 }
 
 function drawObstacles(context, obstacles, distance, canvas) {

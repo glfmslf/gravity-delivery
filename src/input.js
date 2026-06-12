@@ -1,8 +1,20 @@
-export function createInput() {
+export function createInput({ onFirstInteraction } = {}) {
   const keys = new Set();
   let gravityToggleQueued = false;
+  let hasInteracted = false;
+
+  function notifyInteraction() {
+    if (hasInteracted) {
+      return;
+    }
+
+    hasInteracted = true;
+    onFirstInteraction?.();
+  }
 
   function handleKeyDown(event) {
+    notifyInteraction();
+
     if (event.code === "Space") {
       event.preventDefault();
       if (!keys.has(event.code)) {
@@ -14,6 +26,7 @@ export function createInput() {
   }
 
   function handleKeyUp(event) {
+    notifyInteraction();
     keys.delete(event.code);
   }
 
@@ -35,4 +48,3 @@ export function createInput() {
     },
   };
 }
-
