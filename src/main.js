@@ -5,6 +5,7 @@ const timeValue = document.querySelector("#time-value");
 const progressValue = document.querySelector("#progress-value");
 const statusText = document.querySelector("#status-text");
 const restartButton = document.querySelector("#restart-button");
+const controlButton = document.querySelector("#control-button");
 
 const game = createGame({
   canvas,
@@ -12,6 +13,7 @@ const game = createGame({
     timeValue,
     progressValue,
     statusText,
+    controlButton,
   },
 });
 
@@ -20,4 +22,3 @@ restartButton.addEventListener("click", () => {
 });
 
 game.start();
-

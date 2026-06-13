@@ -75,6 +75,21 @@ button {
   border-radius: 8px;
   background: var(--road);
   box-shadow: 0 16px 40px rgb(58 48 40 / 20%);
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+.control-button {
+  display: none;
+  width: 100%;
+  height: 48px;
+  border: 0;
+  border-radius: 8px;
+  color: white;
+  background: var(--accent-2);
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
 }
 
 .status-panel {
@@ -105,8 +120,11 @@ button {
     font-size: 18px;
   }
 
+  .control-button {
+    display: block;
+  }
+
   .status-panel h1 {
     font-size: 22px;
   }
 }
-

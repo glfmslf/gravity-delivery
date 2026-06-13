@@ -1,6 +1,12 @@
-export function createInput({ onFirstInteraction } = {}) {
+export function createInput({
+  eventTarget = globalThis.window,
+  actionTargets = [],
+  onFirstInteraction,
+  onStartRequest,
+} = {}) {
   const keys = new Set();
   let gravityToggleQueued = false;
+  let startQueued = false;
   let hasInteracted = false;
 
   function notifyInteraction() {
@@ -20,6 +26,13 @@ export function createInput({ onFirstInteraction } = {}) {
       if (!keys.has(event.code)) {
         gravityToggleQueued = true;
       }
+      startQueued = true;
+      onStartRequest?.();
+    }
+
+    if (event.code === "Enter") {
+      startQueued = true;
+      onStartRequest?.();
     }
 
     keys.add(event.code);
@@ -30,8 +43,19 @@ export function createInput({ onFirstInteraction } = {}) {
     keys.delete(event.code);
   }
 
-  window.addEventListener("keydown", handleKeyDown);
-  window.addEventListener("keyup", handleKeyUp);
+  function handleAction(event) {
+    event.preventDefault?.();
+    notifyInteraction();
+    gravityToggleQueued = true;
+    startQueued = true;
+    onStartRequest?.();
+  }
+
+  eventTarget.addEventListener("keydown", handleKeyDown);
+  eventTarget.addEventListener("keyup", handleKeyUp);
+  actionTargets.forEach((target) => {
+    target?.addEventListener("pointerdown", handleAction);
+  });
 
   return {
     isPressed(code) {
@@ -42,9 +66,17 @@ export function createInput({ onFirstInteraction } = {}) {
       gravityToggleQueued = false;
       return shouldToggle;
     },
+    consumeStartRequest() {
+      const shouldStart = startQueued;
+      startQueued = false;
+      return shouldStart;
+    },
     destroy() {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
+      eventTarget.removeEventListener("keydown", handleKeyDown);
+      eventTarget.removeEventListener("keyup", handleKeyUp);
+      actionTargets.forEach((target) => {
+        target?.removeEventListener("pointerdown", handleAction);
+      });
     },
   };
 }

@@ -5,6 +5,7 @@ export function drawScene(context, canvas, state) {
   drawDeliveries(context, state.level.deliveries, state.distance, canvas, state.completedDeliveries);
   drawPickups(context, state.level.pickups, state.distance, canvas, state.collectedPickups);
   drawPlayer(context, state.player, state.hitCooldown);
+  drawStartOverlay(context, canvas, state);
   drawEndOverlay(context, canvas, state);
 }
 
@@ -102,8 +103,39 @@ function drawDeliveries(context, deliveries, distance, canvas, completedDeliveri
   });
 }
 
+function drawStartOverlay(context, canvas, state) {
+  if (state.status !== "ready") {
+    return;
+  }
+
+  context.save();
+  context.fillStyle = "rgb(20 24 30 / 68%)";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  context.fillStyle = "#fff9ed";
+  context.textAlign = "center";
+  context.font = "bold 40px sans-serif";
+  context.fillText("反重力快递", canvas.width / 2, canvas.height / 2 - 104);
+
+  context.font = "18px sans-serif";
+  context.fillText("按空格或点击画面翻转重力，贴近绿色门牌完成全部投递。", canvas.width / 2, canvas.height / 2 - 54);
+  context.fillText("黄色时间包加时，橙红障碍会扣时。漏送订单也会失败。", canvas.width / 2, canvas.height / 2 - 22);
+
+  context.fillStyle = "#1f9e89";
+  context.fillRect(canvas.width / 2 - 112, canvas.height / 2 + 22, 224, 44);
+  context.strokeStyle = "#fff9ed";
+  context.lineWidth = 3;
+  context.strokeRect(canvas.width / 2 - 112, canvas.height / 2 + 22, 224, 44);
+
+  context.fillStyle = "#fff9ed";
+  context.font = "bold 18px sans-serif";
+  context.fillText("Space / Enter / 点击开始", canvas.width / 2, canvas.height / 2 + 51);
+
+  context.restore();
+}
+
 function drawEndOverlay(context, canvas, state) {
-  if (state.status === "playing") {
+  if (state.status !== "success" && state.status !== "failed") {
     return;
   }
 
@@ -131,7 +163,7 @@ function drawEndOverlay(context, canvas, state) {
 
   context.font = "16px sans-serif";
   context.fillText(detail, canvas.width / 2, canvas.height / 2 + 14);
-  context.fillText("点击重开再跑一单", canvas.width / 2, canvas.height / 2 + 42);
+  context.fillText(isSuccess ? "Space / Enter / 点击进入下一关" : "Space / Enter / 点击直接重开", canvas.width / 2, canvas.height / 2 + 42);
 
   context.restore();
 }

@@ -1,13 +1,28 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createLevel, getVisibleDeliveries, getVisibleObstacles, getVisiblePickups } from "../src/level.js";
+import {
+  createLevel,
+  getLevelCount,
+  getVisibleDeliveries,
+  getVisibleObstacles,
+  getVisiblePickups,
+} from "../src/level.js";
 
 test("level defines obstacles with world positions and sizes", () => {
   const level = createLevel();
 
   assert.ok(level.obstacles.length >= 4);
   assert.deepEqual(Object.keys(level.obstacles[0]).sort(), ["height", "width", "x", "y"].sort());
+});
+
+test("project has multiple playable levels", () => {
+  assert.ok(getLevelCount() >= 2);
+  assert.notEqual(createLevel(0).name, createLevel(1).name);
+});
+
+test("level index wraps within available levels", () => {
+  assert.equal(createLevel(getLevelCount()).name, createLevel(0).name);
 });
 
 test("visible obstacles are projected from world distance to screen coordinates", () => {

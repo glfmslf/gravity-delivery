@@ -1,5 +1,5 @@
 import { createPlayer, getPlayerHitbox } from "./player.js";
-import { createLevel, getVisibleDeliveries, getVisibleObstacles, getVisiblePickups } from "./level.js";
+import { createLevel, getLevelCount, getVisibleDeliveries, getVisibleObstacles, getVisiblePickups } from "./level.js";
 import { drawScene } from "./renderer.js";
 import { createInput } from "./input.js";
 import { rectanglesOverlap } from "./collision.js";
@@ -7,23 +7,34 @@ import { applyObstaclePenalty } from "./game-rules.js";
 import { applyDeliveryReward, determineDeliveryOutcome } from "./delivery-rules.js";
 import { applyPickupReward } from "./pickup-rules.js";
 import { createAudio } from "./audio.js";
+import {
+  getStatusAfterRestartRequest,
+  getStatusAfterStartRequest,
+  shouldRestartAfterAction,
+} from "./game-status-rules.js";
 
 const INITIAL_TIME = 60;
 
 export function createGame({ canvas, ui }) {
   const context = canvas.getContext("2d");
   const audio = createAudio();
-  const input = createInput({ onFirstInteraction: audio.unlock });
+  const input = createInput({
+    actionTargets: [canvas, ui.controlButton],
+    onFirstInteraction: audio.unlock,
+    onStartRequest: handleStartRequest,
+  });
   let animationFrameId = 0;
   let previousTime = 0;
-  let state = createInitialState();
+  let currentLevelIndex = 0;
+  let state = createInitialState(currentLevelIndex);
 
-  function createInitialState() {
+  function createInitialState(levelIndex) {
     return {
       player: createPlayer(),
-      level: createLevel(),
+      level: createLevel(levelIndex),
+      levelIndex,
       timeLeft: INITIAL_TIME,
-      status: "playing",
+      status: "ready",
       distance: 0,
       hitCooldown: 0,
       completedDeliveries: new Set(),
@@ -37,11 +48,29 @@ export function createGame({ canvas, ui }) {
   }
 
   function restart() {
-    state = createInitialState();
+    restartToReady();
+  }
+
+  function restartToReady() {
+    state = createInitialState(currentLevelIndex);
     previousTime = performance.now();
-    ui.statusText.textContent = "按空格翻转重力，提前判断上下通道。";
+    ui.statusText.textContent = `第 ${state.levelIndex + 1}/${getLevelCount()} 关：${state.level.name}。按空格或 Enter 开始。`;
     renderUi();
     drawScene(context, canvas, state);
+  }
+
+  function restartToPlaying() {
+    state = createInitialState(currentLevelIndex);
+    state.status = "playing";
+    previousTime = performance.now();
+    input.consumeGravityToggle();
+    ui.statusText.textContent = "按空格翻转重力，贴近门牌完成投递。";
+  }
+
+  function handleStartRequest() {
+    if (shouldRestartAfterAction(state.status, true)) {
+      restartToPlaying();
+    }
   }
 
   function tick(now) {
@@ -56,10 +85,25 @@ export function createGame({ canvas, ui }) {
   }
 
   function update(deltaSeconds) {
-    if (state.status !== "playing") {
+    if (state.status === "ready") {
+      const nextStatus = getStatusAfterStartRequest(state.status, input.consumeStartRequest());
+      if (nextStatus === "playing") {
+        state.status = nextStatus;
+        input.consumeGravityToggle();
+        ui.statusText.textContent = "按空格翻转重力，贴近门牌完成投递。";
+      }
       return;
     }
 
+    if (state.status !== "playing") {
+      const nextStatus = getStatusAfterRestartRequest(state.status, input.consumeStartRequest());
+      if (nextStatus === "playing") {
+        restartToPlaying();
+      }
+      return;
+    }
+
+    input.consumeStartRequest();
     state.timeLeft -= deltaSeconds;
     state.distance += state.level.speed * deltaSeconds;
     state.hitCooldown = Math.max(state.hitCooldown - deltaSeconds, 0);
@@ -89,6 +133,7 @@ export function createGame({ canvas, ui }) {
       if (state.status === "success") {
         ui.statusText.textContent = "配送成功。";
         audio.success();
+        currentLevelIndex = (currentLevelIndex + 1) % getLevelCount();
       } else {
         ui.statusText.textContent = "漏送订单，配送失败。";
         audio.failed();
@@ -157,7 +202,7 @@ export function createGame({ canvas, ui }) {
   function renderUi() {
     const progress = Math.min(state.distance / state.level.length, 1);
     ui.timeValue.textContent = state.timeLeft.toFixed(1);
-    ui.progressValue.textContent = `${Math.round(progress * 100)}% · ${state.completedDeliveries.size}/${state.level.deliveries.length}`;
+    ui.progressValue.textContent = `第 ${state.levelIndex + 1}/${getLevelCount()} 关 · ${Math.round(progress * 100)}% · ${state.completedDeliveries.size}/${state.level.deliveries.length}`;
   }
 
   return {
