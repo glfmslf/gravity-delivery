@@ -15,6 +15,7 @@ import {
   saveLeaderboard,
 } from "./leaderboard.js";
 import { calculateDeliveryRating } from "./rating.js";
+import { advanceHitEffect, createHitEffect } from "./hit-effects.js";
 import {
   getStatusAfterRestartRequest,
   getStatusAfterStartRequest,
@@ -51,6 +52,7 @@ export function createGame({ canvas, ui, assets = {} }) {
       currentCombo: 0,
       maxCombo: 0,
       hitCount: 0,
+      hitEffect: null,
       finalScore: null,
       finalRating: null,
     };
@@ -123,6 +125,14 @@ export function createGame({ canvas, ui, assets = {} }) {
     }
 
     input.consumeStartRequest();
+    const hitEffectStep = advanceHitEffect(state.hitEffect, deltaSeconds);
+    state.hitEffect = hitEffectStep.effect;
+    deltaSeconds = hitEffectStep.simulationDelta;
+
+    if (deltaSeconds <= 0) {
+      return;
+    }
+
     state.timeLeft -= deltaSeconds;
     state.distance += state.level.speed * deltaSeconds;
     state.hitCooldown = Math.max(state.hitCooldown - deltaSeconds, 0);
@@ -207,11 +217,11 @@ export function createGame({ canvas, ui, assets = {} }) {
   function updateObstacleCollisions() {
     const visibleObstacles = getVisibleObstacles(state.level.obstacles, state.distance);
     const playerHitbox = getPlayerHitbox(state.player);
-    const hasHit = visibleObstacles.some((obstacle) => rectanglesOverlap(playerHitbox, obstacle));
+    const obstacle = visibleObstacles.find((item) => rectanglesOverlap(playerHitbox, item));
     const result = applyObstaclePenalty({
       timeLeft: state.timeLeft,
       hitCooldown: state.hitCooldown,
-      hasHit,
+      hasHit: Boolean(obstacle),
     });
 
     state.timeLeft = result.timeLeft;
@@ -221,6 +231,10 @@ export function createGame({ canvas, ui, assets = {} }) {
       state.hitCount += 1;
       state.currentCombo = 0;
       state.player.velocityY *= -0.35;
+      state.hitEffect = createHitEffect({
+        x: state.player.x + state.player.width,
+        y: state.player.y + state.player.height / 2,
+      });
       ui.statusText.textContent = "撞到障碍，连击中断，扣除 4 秒。";
       audio.hit();
     }

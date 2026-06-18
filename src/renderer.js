@@ -1,5 +1,14 @@
+import { getHitEffectVisuals } from "./hit-effects.js";
+
 export function drawScene(context, canvas, state, assets = {}) {
   context.clearRect(0, 0, canvas.width, canvas.height);
+  context.fillStyle = "#2e3440";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  const hitVisuals = getHitEffectVisuals(state.hitEffect);
+
+  context.save();
+  context.translate(hitVisuals.shakeX, hitVisuals.shakeY);
   drawBackground(context, canvas, state.distance);
   drawRouteFrame(context, canvas);
   drawGravityIndicator(context, canvas, state.player.gravityDirection);
@@ -8,6 +17,10 @@ export function drawScene(context, canvas, state, assets = {}) {
   drawPickups(context, state.level.pickups, state.distance, canvas, state.collectedPickups, assets);
   drawFinishLine(context, canvas, state.level.length, state.distance);
   drawPlayer(context, state.player, state.hitCooldown, assets);
+  drawHitSparks(context, hitVisuals.sparks);
+  context.restore();
+
+  drawHitFlash(context, canvas, hitVisuals.flashAlpha);
   drawStartOverlay(context, canvas, state);
   drawEndOverlay(context, canvas, state);
 }
@@ -414,6 +427,39 @@ function drawPlayer(context, player, hitCooldown, assets) {
   context.lineWidth = 3;
   context.strokeRect(6, 8, player.width - 12, player.height - 10);
 
+  context.restore();
+}
+
+function drawHitSparks(context, sparks) {
+  sparks.forEach((spark) => {
+    if (spark.size <= 0 || spark.alpha <= 0) {
+      return;
+    }
+
+    context.save();
+    context.translate(spark.x, spark.y);
+    context.rotate(Math.PI / 4);
+    context.globalAlpha = spark.alpha;
+    context.fillStyle = spark.color;
+    context.fillRect(-spark.size / 2, -spark.size / 2, spark.size, spark.size);
+    context.restore();
+  });
+}
+
+function drawHitFlash(context, canvas, flashAlpha) {
+  if (flashAlpha <= 0) {
+    return;
+  }
+
+  context.save();
+  context.globalAlpha = flashAlpha;
+  context.fillStyle = "#e45d35";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  context.globalAlpha = Math.min(flashAlpha * 1.8, 0.8);
+  context.strokeStyle = "#7d1f1a";
+  context.lineWidth = 24;
+  context.strokeRect(0, 0, canvas.width, canvas.height);
   context.restore();
 }
 
