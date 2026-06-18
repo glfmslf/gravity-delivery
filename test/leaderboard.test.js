@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { addLeaderboardEntry, calculateScore } from "../src/leaderboard.js";
+import {
+  addLeaderboardEntry,
+  calculateScore,
+  formatLeaderboardEntry,
+  loadLeaderboard,
+  saveLeaderboard,
+} from "../src/leaderboard.js";
 
 test("score rewards level, completed deliveries, and remaining time", () => {
   assert.equal(
@@ -57,4 +63,42 @@ test("leaderboard keeps only the top five entries", () => {
   });
 
   assert.deepEqual(nextEntries.map((entry) => entry.score), [500, 400, 350, 300, 200]);
+});
+
+test("leaderboard label includes rating and falls back for old entries", () => {
+  assert.equal(
+    formatLeaderboardEntry({
+      score: 2840,
+      rating: "S",
+      levelName: "楼道急件",
+      maxCombo: 4,
+      hitCount: 0,
+    }),
+    "S 级 · 2840 分 · 楼道急件 · 连击 x4 · 撞击 0 次",
+  );
+
+  assert.equal(
+    formatLeaderboardEntry({
+      score: 1800,
+      levelName: "楼道急件",
+    }),
+    "-- 级 · 1800 分 · 楼道急件 · 连击 x0 · 撞击 0 次",
+  );
+});
+
+test("saved leaderboard keeps delivery rating", () => {
+  const values = new Map();
+  const storage = {
+    getItem(key) {
+      return values.get(key) ?? null;
+    },
+    setItem(key, value) {
+      values.set(key, value);
+    },
+  };
+  const entries = [{ score: 2840, rating: "S", levelName: "楼道急件" }];
+
+  saveLeaderboard(entries, storage);
+
+  assert.deepEqual(loadLeaderboard(storage), entries);
 });

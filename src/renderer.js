@@ -215,17 +215,63 @@ function drawEndOverlay(context, canvas, state) {
     return;
   }
 
-  const isSuccess = state.status === "success";
-  const title = isSuccess ? "配送成功" : "配送失败";
-  const detail = isSuccess
-    ? `完成 ${state.completedDeliveries.size}/${state.level.deliveries.length} 单，剩余 ${state.timeLeft.toFixed(1)} 秒`
-    : getFailureDetail(state);
-
   context.save();
   context.fillStyle = "rgb(20 24 30 / 72%)";
   context.fillRect(0, 0, canvas.width, canvas.height);
 
-  context.fillStyle = isSuccess ? "#1f9e89" : "#e45d35";
+  if (state.status === "success") {
+    drawSuccessOverlay(context, canvas, state);
+  } else {
+    drawFailureOverlay(context, canvas, state);
+  }
+
+  context.restore();
+}
+
+function drawSuccessOverlay(context, canvas, state) {
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  const rating = state.finalRating ?? { grade: "--", label: "配送完成" };
+  const score = state.finalScore ?? 0;
+
+  context.fillStyle = "#171d24";
+  context.fillRect(centerX - 220, centerY - 178, 440, 326);
+
+  context.strokeStyle = "#53616f";
+  context.lineWidth = 3;
+  context.strokeRect(centerX - 220, centerY - 178, 440, 326);
+
+  context.fillStyle = "#55c6ad";
+  context.textAlign = "center";
+  context.font = "bold 22px sans-serif";
+  context.fillText("配送成功", centerX, centerY - 136);
+
+  context.fillStyle = "#f8d16b";
+  context.font = "bold 112px sans-serif";
+  context.fillText(rating.grade, centerX, centerY - 24);
+
+  context.fillStyle = "#fff9ed";
+  context.font = "bold 22px sans-serif";
+  context.fillText(rating.label, centerX, centerY + 14);
+
+  context.fillStyle = "#b9c2ca";
+  context.font = "15px sans-serif";
+  context.fillText(
+    `${score} 分 · ${state.timeLeft.toFixed(1)} 秒 · 连击 x${state.maxCombo} · 撞击 ${state.hitCount} 次`,
+    centerX,
+    centerY + 54,
+  );
+
+  context.fillStyle = "#e45d35";
+  context.fillRect(centerX - 152, centerY + 82, 304, 42);
+
+  context.fillStyle = "#fff9ed";
+  context.font = "bold 16px sans-serif";
+  context.fillText("Space / Enter / 点击进入下一关", centerX, centerY + 109);
+}
+
+function drawFailureOverlay(context, canvas, state) {
+  context.fillStyle = "#e45d35";
   context.fillRect(canvas.width / 2 - 170, canvas.height / 2 - 76, 340, 132);
 
   context.strokeStyle = "#fff9ed";
@@ -235,13 +281,11 @@ function drawEndOverlay(context, canvas, state) {
   context.fillStyle = "#fff9ed";
   context.textAlign = "center";
   context.font = "bold 34px sans-serif";
-  context.fillText(title, canvas.width / 2, canvas.height / 2 - 22);
+  context.fillText("配送失败", canvas.width / 2, canvas.height / 2 - 22);
 
   context.font = "16px sans-serif";
-  context.fillText(detail, canvas.width / 2, canvas.height / 2 + 14);
-  context.fillText(isSuccess ? "Space / Enter / 点击进入下一关" : "Space / Enter / 点击直接重开", canvas.width / 2, canvas.height / 2 + 42);
-
-  context.restore();
+  context.fillText(getFailureDetail(state), canvas.width / 2, canvas.height / 2 + 14);
+  context.fillText("Space / Enter / 点击直接重开", canvas.width / 2, canvas.height / 2 + 42);
 }
 
 function getFailureDetail(state) {

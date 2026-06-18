@@ -15,6 +15,14 @@ export function addLeaderboardEntry(entries, entry) {
     .slice(0, MAX_ENTRIES);
 }
 
+export function formatLeaderboardEntry(entry) {
+  const rating = entry.rating ?? "--";
+  const maxCombo = entry.maxCombo ?? 0;
+  const hitCount = entry.hitCount ?? 0;
+
+  return `${rating} 级 · ${entry.score} 分 · ${entry.levelName} · 连击 x${maxCombo} · 撞击 ${hitCount} 次`;
+}
+
 export function loadLeaderboard(storage = globalThis.localStorage) {
   if (!storage) {
     return [];

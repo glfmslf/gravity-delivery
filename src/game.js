@@ -7,7 +7,14 @@ import { applyObstaclePenalty } from "./game-rules.js";
 import { applyDeliveryReward, determineDeliveryOutcome } from "./delivery-rules.js";
 import { applyPickupReward } from "./pickup-rules.js";
 import { createAudio } from "./audio.js";
-import { addLeaderboardEntry, calculateScore, loadLeaderboard, saveLeaderboard } from "./leaderboard.js";
+import {
+  addLeaderboardEntry,
+  calculateScore,
+  formatLeaderboardEntry,
+  loadLeaderboard,
+  saveLeaderboard,
+} from "./leaderboard.js";
+import { calculateDeliveryRating } from "./rating.js";
 import {
   getStatusAfterRestartRequest,
   getStatusAfterStartRequest,
@@ -44,6 +51,8 @@ export function createGame({ canvas, ui, assets = {} }) {
       currentCombo: 0,
       maxCombo: 0,
       hitCount: 0,
+      finalScore: null,
+      finalRating: null,
     };
   }
 
@@ -227,14 +236,23 @@ export function createGame({ canvas, ui, assets = {} }) {
   }
 
   function recordSuccess() {
+    state.finalScore = calculateScore({
+      levelIndex: state.levelIndex,
+      completedDeliveries: state.completedDeliveries.size,
+      timeLeft: state.timeLeft,
+      maxCombo: state.maxCombo,
+      hitCount: state.hitCount,
+    });
+    state.finalRating = calculateDeliveryRating({
+      timeLeft: state.timeLeft,
+      maxCombo: state.maxCombo,
+      hitCount: state.hitCount,
+      totalDeliveries: state.level.deliveries.length,
+    });
+
     const entry = {
-      score: calculateScore({
-        levelIndex: state.levelIndex,
-        completedDeliveries: state.completedDeliveries.size,
-        timeLeft: state.timeLeft,
-        maxCombo: state.maxCombo,
-        hitCount: state.hitCount,
-      }),
+      score: state.finalScore,
+      rating: state.finalRating.grade,
       levelName: state.level.name,
       timeLeft: Number(state.timeLeft.toFixed(1)),
       completedDeliveries: state.completedDeliveries.size,
@@ -261,9 +279,7 @@ export function createGame({ canvas, ui, assets = {} }) {
     ui.leaderboardList.replaceChildren(
       ...leaderboard.map((entry) => {
         const item = document.createElement("li");
-        const maxCombo = entry.maxCombo ?? 0;
-        const hitCount = entry.hitCount ?? 0;
-        item.textContent = `${entry.score} 分 · ${entry.levelName} · 连击 x${maxCombo} · 撞击 ${hitCount} 次`;
+        item.textContent = formatLeaderboardEntry(entry);
         return item;
       }),
     );
