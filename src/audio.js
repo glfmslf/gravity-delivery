@@ -1,6 +1,14 @@
-export function createAudio() {
-  const AudioContext = globalThis.AudioContext || globalThis.webkitAudioContext;
+const MUSIC_PATTERN = [196, 247, 294, 247, 220, 262, 330, 262];
+
+export function createAudio({
+  AudioContext = globalThis.AudioContext || globalThis.webkitAudioContext,
+  setTimer = globalThis.setInterval,
+  clearTimer = globalThis.clearInterval,
+} = {}) {
   let context = null;
+  let muted = false;
+  let musicTimer = 0;
+  let musicStep = 0;
 
   function getContext() {
     if (!AudioContext) {
@@ -19,6 +27,10 @@ export function createAudio() {
   }
 
   function playTone({ frequency, duration, type = "sine", volume = 0.06, slideTo = frequency }) {
+    if (muted) {
+      return;
+    }
+
     const audioContext = getContext();
     if (!audioContext) {
       return;
@@ -42,10 +54,51 @@ export function createAudio() {
     oscillator.stop(now + duration);
   }
 
+  function playMusicStep() {
+    const frequency = MUSIC_PATTERN[musicStep % MUSIC_PATTERN.length];
+    musicStep += 1;
+    playTone({
+      frequency,
+      slideTo: frequency * 1.01,
+      duration: 0.38,
+      type: "triangle",
+      volume: 0.018,
+    });
+  }
+
+  function stopMusic() {
+    if (!musicTimer) {
+      return;
+    }
+
+    clearTimer(musicTimer);
+    musicTimer = 0;
+  }
+
   return {
     unlock() {
       getContext();
     },
+    isMuted() {
+      return muted;
+    },
+    toggleMuted() {
+      muted = !muted;
+      if (muted) {
+        stopMusic();
+      }
+
+      return muted;
+    },
+    startMusic() {
+      if (muted || musicTimer || !getContext()) {
+        return;
+      }
+
+      playMusicStep();
+      musicTimer = setTimer(playMusicStep, 480);
+    },
+    stopMusic,
     flip() {
       playTone({ frequency: 260, slideTo: 520, duration: 0.1, type: "triangle" });
     },

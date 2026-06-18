@@ -7,6 +7,7 @@ import { applyObstaclePenalty } from "./game-rules.js";
 import { applyDeliveryReward, determineDeliveryOutcome } from "./delivery-rules.js";
 import { applyPickupReward } from "./pickup-rules.js";
 import { createAudio } from "./audio.js";
+import { addLeaderboardEntry, calculateScore, loadLeaderboard, saveLeaderboard } from "./leaderboard.js";
 import {
   getStatusAfterRestartRequest,
   getStatusAfterStartRequest,
@@ -15,7 +16,7 @@ import {
 
 const INITIAL_TIME = 60;
 
-export function createGame({ canvas, ui }) {
+export function createGame({ canvas, ui, assets = {} }) {
   const context = canvas.getContext("2d");
   const audio = createAudio();
   const input = createInput({
@@ -23,6 +24,7 @@ export function createGame({ canvas, ui }) {
     onFirstInteraction: audio.unlock,
     onStartRequest: handleStartRequest,
   });
+  let leaderboard = loadLeaderboard();
   let animationFrameId = 0;
   let previousTime = 0;
   let currentLevelIndex = 0;
@@ -39,11 +41,16 @@ export function createGame({ canvas, ui }) {
       hitCooldown: 0,
       completedDeliveries: new Set(),
       collectedPickups: new Set(),
+      currentCombo: 0,
+      maxCombo: 0,
+      hitCount: 0,
     };
   }
 
   function start() {
     previousTime = performance.now();
+    renderLeaderboard();
+    renderAudioUi();
     animationFrameId = requestAnimationFrame(tick);
   }
 
@@ -52,11 +59,12 @@ export function createGame({ canvas, ui }) {
   }
 
   function restartToReady() {
+    audio.stopMusic();
     state = createInitialState(currentLevelIndex);
     previousTime = performance.now();
     ui.statusText.textContent = `第 ${state.levelIndex + 1}/${getLevelCount()} 关：${state.level.name}。按空格或 Enter 开始。`;
     renderUi();
-    drawScene(context, canvas, state);
+    drawScene(context, canvas, state, assets);
   }
 
   function restartToPlaying() {
@@ -65,6 +73,7 @@ export function createGame({ canvas, ui }) {
     previousTime = performance.now();
     input.consumeGravityToggle();
     ui.statusText.textContent = "按空格翻转重力，贴近门牌完成投递。";
+    audio.startMusic();
   }
 
   function handleStartRequest() {
@@ -78,7 +87,7 @@ export function createGame({ canvas, ui }) {
     previousTime = now;
 
     update(deltaSeconds);
-    drawScene(context, canvas, state);
+    drawScene(context, canvas, state, assets);
     renderUi();
 
     animationFrameId = requestAnimationFrame(tick);
@@ -91,6 +100,7 @@ export function createGame({ canvas, ui }) {
         state.status = nextStatus;
         input.consumeGravityToggle();
         ui.statusText.textContent = "按空格翻转重力，贴近门牌完成投递。";
+        audio.startMusic();
       }
       return;
     }
@@ -119,6 +129,7 @@ export function createGame({ canvas, ui }) {
       state.timeLeft = 0;
       state.status = "failed";
       ui.statusText.textContent = "时间耗尽，配送失败。";
+      audio.stopMusic();
       audio.failed();
       return;
     }
@@ -132,10 +143,13 @@ export function createGame({ canvas, ui }) {
 
       if (state.status === "success") {
         ui.statusText.textContent = "配送成功。";
+        recordSuccess();
+        audio.stopMusic();
         audio.success();
         currentLevelIndex = (currentLevelIndex + 1) % getLevelCount();
       } else {
         ui.statusText.textContent = "漏送订单，配送失败。";
+        audio.stopMusic();
         audio.failed();
       }
     }
@@ -174,7 +188,9 @@ export function createGame({ canvas, ui }) {
     state.completedDeliveries = result.completedDeliveries;
 
     if (result.wasDelivered) {
-      ui.statusText.textContent = `完成 ${delivery.id} 投递，奖励 ${delivery.reward} 秒。`;
+      state.currentCombo += 1;
+      state.maxCombo = Math.max(state.maxCombo, state.currentCombo);
+      ui.statusText.textContent = `完成 ${delivery.id} 投递，连击 x${state.currentCombo}，奖励 ${delivery.reward} 秒。`;
       audio.delivery();
     }
   }
@@ -193,8 +209,10 @@ export function createGame({ canvas, ui }) {
     state.hitCooldown = result.hitCooldown;
 
     if (result.wasPenalized) {
+      state.hitCount += 1;
+      state.currentCombo = 0;
       state.player.velocityY *= -0.35;
-      ui.statusText.textContent = "撞到障碍，扣除 4 秒。";
+      ui.statusText.textContent = "撞到障碍，连击中断，扣除 4 秒。";
       audio.hit();
     }
   }
@@ -203,12 +221,76 @@ export function createGame({ canvas, ui }) {
     const progress = Math.min(state.distance / state.level.length, 1);
     ui.timeValue.textContent = state.timeLeft.toFixed(1);
     ui.progressValue.textContent = `第 ${state.levelIndex + 1}/${getLevelCount()} 关 · ${Math.round(progress * 100)}% · ${state.completedDeliveries.size}/${state.level.deliveries.length}`;
+    if (ui.comboValue) {
+      ui.comboValue.textContent = String(state.currentCombo);
+    }
+  }
+
+  function recordSuccess() {
+    const entry = {
+      score: calculateScore({
+        levelIndex: state.levelIndex,
+        completedDeliveries: state.completedDeliveries.size,
+        timeLeft: state.timeLeft,
+        maxCombo: state.maxCombo,
+        hitCount: state.hitCount,
+      }),
+      levelName: state.level.name,
+      timeLeft: Number(state.timeLeft.toFixed(1)),
+      completedDeliveries: state.completedDeliveries.size,
+      maxCombo: state.maxCombo,
+      hitCount: state.hitCount,
+      createdAt: new Date().toISOString(),
+    };
+
+    leaderboard = addLeaderboardEntry(leaderboard, entry);
+    saveLeaderboard(leaderboard);
+    renderLeaderboard();
+  }
+
+  function renderLeaderboard() {
+    if (!ui.leaderboardList) {
+      return;
+    }
+
+    if (leaderboard.length === 0) {
+      ui.leaderboardList.innerHTML = "<li>暂无通关记录</li>";
+      return;
+    }
+
+    ui.leaderboardList.replaceChildren(
+      ...leaderboard.map((entry) => {
+        const item = document.createElement("li");
+        const maxCombo = entry.maxCombo ?? 0;
+        const hitCount = entry.hitCount ?? 0;
+        item.textContent = `${entry.score} 分 · ${entry.levelName} · 连击 x${maxCombo} · 撞击 ${hitCount} 次`;
+        return item;
+      }),
+    );
+  }
+
+  function renderAudioUi() {
+    if (!ui.audioButton) {
+      return;
+    }
+
+    const isMuted = audio.isMuted();
+    ui.audioButton.textContent = isMuted ? "声音关" : "声音开";
+    ui.audioButton.setAttribute("aria-pressed", String(isMuted));
   }
 
   return {
     start,
     restart,
+    toggleAudio() {
+      audio.toggleMuted();
+      if (!audio.isMuted() && state.status === "playing") {
+        audio.startMusic();
+      }
+      renderAudioUi();
+    },
     stop() {
+      audio.stopMusic();
       cancelAnimationFrame(animationFrameId);
       input.destroy();
     },

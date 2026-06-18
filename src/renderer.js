@@ -1,10 +1,13 @@
-export function drawScene(context, canvas, state) {
+export function drawScene(context, canvas, state, assets = {}) {
   context.clearRect(0, 0, canvas.width, canvas.height);
   drawBackground(context, canvas, state.distance);
-  drawObstacles(context, state.level.obstacles, state.distance, canvas);
-  drawDeliveries(context, state.level.deliveries, state.distance, canvas, state.completedDeliveries);
-  drawPickups(context, state.level.pickups, state.distance, canvas, state.collectedPickups);
-  drawPlayer(context, state.player, state.hitCooldown);
+  drawRouteFrame(context, canvas);
+  drawGravityIndicator(context, canvas, state.player.gravityDirection);
+  drawObstacles(context, state.level.obstacles, state.distance, canvas, assets);
+  drawDeliveries(context, state.level.deliveries, state.distance, canvas, state.completedDeliveries, assets);
+  drawPickups(context, state.level.pickups, state.distance, canvas, state.collectedPickups, assets);
+  drawFinishLine(context, canvas, state.level.length, state.distance);
+  drawPlayer(context, state.player, state.hitCooldown, assets);
   drawStartOverlay(context, canvas, state);
   drawEndOverlay(context, canvas, state);
 }
@@ -28,7 +31,70 @@ function drawBackground(context, canvas, distance) {
   }
 }
 
-function drawPickups(context, pickups, distance, canvas, collectedPickups) {
+function drawRouteFrame(context, canvas) {
+  context.save();
+
+  context.fillStyle = "#202832";
+  context.fillRect(0, 0, canvas.width, 24);
+  context.fillRect(0, canvas.height - 24, canvas.width, 24);
+
+  context.fillStyle = "#53616f";
+  for (let x = 0; x < canvas.width; x += 56) {
+    context.fillRect(x, 10, 32, 4);
+    context.fillRect(x + 24, canvas.height - 14, 32, 4);
+  }
+
+  context.strokeStyle = "rgb(255 249 237 / 18%)";
+  context.lineWidth = 1;
+  context.beginPath();
+  context.moveTo(0, 24.5);
+  context.lineTo(canvas.width, 24.5);
+  context.moveTo(0, canvas.height - 24.5);
+  context.lineTo(canvas.width, canvas.height - 24.5);
+  context.stroke();
+
+  context.restore();
+}
+
+function drawGravityIndicator(context, canvas, gravityDirection) {
+  const centerX = canvas.width - 72;
+  const centerY = gravityDirection > 0 ? 72 : canvas.height - 72;
+  const arrowTipY = gravityDirection > 0 ? centerY + 22 : centerY - 22;
+  const arrowBaseY = gravityDirection > 0 ? centerY - 20 : centerY + 20;
+
+  context.save();
+
+  context.fillStyle = "rgb(20 24 30 / 42%)";
+  context.fillRect(centerX - 34, centerY - 36, 68, 72);
+  context.strokeStyle = "rgb(255 249 237 / 35%)";
+  context.lineWidth = 2;
+  context.strokeRect(centerX - 34.5, centerY - 36.5, 69, 73);
+
+  context.strokeStyle = "#f8d16b";
+  context.lineWidth = 5;
+  context.lineCap = "round";
+  context.beginPath();
+  context.moveTo(centerX, arrowBaseY);
+  context.lineTo(centerX, arrowTipY);
+  context.stroke();
+
+  context.fillStyle = "#f8d16b";
+  context.beginPath();
+  context.moveTo(centerX, arrowTipY + gravityDirection * 8);
+  context.lineTo(centerX - 10, arrowTipY - gravityDirection * 7);
+  context.lineTo(centerX + 10, arrowTipY - gravityDirection * 7);
+  context.closePath();
+  context.fill();
+
+  context.fillStyle = "#fff9ed";
+  context.font = "bold 12px sans-serif";
+  context.textAlign = "center";
+  context.fillText("重力", centerX, centerY + (gravityDirection > 0 ? -24 : 30));
+
+  context.restore();
+}
+
+function drawPickups(context, pickups, distance, canvas, collectedPickups, assets) {
   pickups.forEach((pickup) => {
     const x = pickup.x - distance;
 
@@ -41,6 +107,12 @@ function drawPickups(context, pickups, distance, canvas, collectedPickups) {
 
     context.save();
     context.translate(centerX, centerY);
+
+    if (isReadyImage(assets.pickup)) {
+      context.drawImage(assets.pickup, -pickup.width / 2 - 3, -pickup.height / 2 - 3, pickup.width + 6, pickup.height + 6);
+      context.restore();
+      return;
+    }
 
     context.fillStyle = "#f8d16b";
     context.beginPath();
@@ -59,7 +131,7 @@ function drawPickups(context, pickups, distance, canvas, collectedPickups) {
   });
 }
 
-function drawDeliveries(context, deliveries, distance, canvas, completedDeliveries) {
+function drawDeliveries(context, deliveries, distance, canvas, completedDeliveries, assets) {
   deliveries.forEach((delivery) => {
     const x = delivery.x - distance;
 
@@ -73,16 +145,20 @@ function drawDeliveries(context, deliveries, distance, canvas, completedDeliveri
     context.translate(x, delivery.y);
     context.globalAlpha = isCompleted ? 0.35 : 1;
 
-    context.fillStyle = "#1f9e89";
-    context.fillRect(0, 0, delivery.width, delivery.height);
+    if (isReadyImage(assets.delivery)) {
+      context.drawImage(assets.delivery, 0, 0, delivery.width, delivery.height);
+    } else {
+      context.fillStyle = "#1f9e89";
+      context.fillRect(0, 0, delivery.width, delivery.height);
 
-    context.fillStyle = "#d7fff2";
-    context.fillRect(8, 10, delivery.width - 16, 10);
-    context.fillRect(8, delivery.height - 18, delivery.width - 16, 8);
+      context.fillStyle = "#d7fff2";
+      context.fillRect(8, 10, delivery.width - 16, 10);
+      context.fillRect(8, delivery.height - 18, delivery.width - 16, 8);
 
-    context.strokeStyle = "#0c544b";
-    context.lineWidth = 3;
-    context.strokeRect(1.5, 1.5, delivery.width - 3, delivery.height - 3);
+      context.strokeStyle = "#0c544b";
+      context.lineWidth = 3;
+      context.strokeRect(1.5, 1.5, delivery.width - 3, delivery.height - 3);
+    }
 
     context.fillStyle = "#102f2b";
     context.font = "bold 13px sans-serif";
@@ -176,7 +252,37 @@ function getFailureDetail(state) {
   return `完成 ${state.completedDeliveries.size}/${state.level.deliveries.length} 单，漏送订单`;
 }
 
-function drawObstacles(context, obstacles, distance, canvas) {
+function drawFinishLine(context, canvas, levelLength, distance) {
+  const x = levelLength - distance;
+
+  if (x < -40 || x > canvas.width + 80) {
+    return;
+  }
+
+  context.save();
+  context.translate(x, 24);
+
+  context.fillStyle = "rgb(255 249 237 / 72%)";
+  context.fillRect(0, 0, 10, canvas.height - 48);
+
+  for (let y = 0; y < canvas.height - 48; y += 28) {
+    context.fillStyle = y % 56 === 0 ? "#202832" : "#fff9ed";
+    context.fillRect(10, y, 26, 28);
+  }
+
+  context.fillStyle = "#fff9ed";
+  context.font = "bold 14px sans-serif";
+  context.textAlign = "center";
+  context.save();
+  context.translate(52, (canvas.height - 48) / 2);
+  context.rotate(-Math.PI / 2);
+  context.fillText("终点", 0, 0);
+  context.restore();
+
+  context.restore();
+}
+
+function drawObstacles(context, obstacles, distance, canvas, assets) {
   obstacles.forEach((obstacle) => {
     const x = obstacle.x - distance;
 
@@ -186,6 +292,12 @@ function drawObstacles(context, obstacles, distance, canvas) {
 
     context.save();
     context.translate(x, obstacle.y);
+
+    if (isReadyImage(assets.obstacle)) {
+      context.drawImage(assets.obstacle, 0, 0, obstacle.width, obstacle.height);
+      context.restore();
+      return;
+    }
 
     context.fillStyle = "#e45d35";
     context.fillRect(0, 0, obstacle.width, obstacle.height);
@@ -207,16 +319,46 @@ function drawObstacles(context, obstacles, distance, canvas) {
   });
 }
 
-function drawPlayer(context, player, hitCooldown) {
+function drawPlayer(context, player, hitCooldown, assets) {
   context.save();
   context.translate(player.x, player.y);
   context.globalAlpha = hitCooldown > 0 ? 0.55 + Math.sin(hitCooldown * 28) * 0.25 : 1;
+
+  if (isReadyImage(assets.player)) {
+    context.save();
+    context.translate(-22, -8);
+    context.drawImage(assets.player, 0, 0, player.width + 44, player.height + 22);
+    context.restore();
+    context.restore();
+    return;
+  }
+
+  context.fillStyle = player.gravityDirection > 0 ? "#f8d16b" : "#78d6ff";
+  context.beginPath();
+  context.moveTo(-8, player.height / 2);
+  context.lineTo(-26, player.height / 2 - 8);
+  context.lineTo(-20, player.height / 2);
+  context.lineTo(-26, player.height / 2 + 8);
+  context.closePath();
+  context.fill();
 
   context.fillStyle = "#f5b44b";
   context.fillRect(6, 8, player.width - 12, player.height - 10);
 
   context.fillStyle = "#d97836";
   context.fillRect(12, 4, player.width - 24, 10);
+
+  context.fillStyle = "#fff1c8";
+  context.fillRect(16, 13, 16, 8);
+
+  context.strokeStyle = "#8b5a2b";
+  context.lineWidth = 2;
+  context.beginPath();
+  context.moveTo(16, 17);
+  context.lineTo(32, 17);
+  context.moveTo(24, 13);
+  context.lineTo(24, 21);
+  context.stroke();
 
   context.fillStyle = "#29323d";
   context.fillRect(player.width - 2, 14, 14, 8);
@@ -229,4 +371,8 @@ function drawPlayer(context, player, hitCooldown) {
   context.strokeRect(6, 8, player.width - 12, player.height - 10);
 
   context.restore();
+}
+
+function isReadyImage(image) {
+  return image && image.complete !== false && image.naturalWidth !== 0;
 }

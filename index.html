@@ -17,7 +17,14 @@
           <span class="hud-label">进度</span>
           <strong id="progress-value">0%</strong>
         </div>
-        <button id="restart-button" type="button">重开</button>
+        <div>
+          <span class="hud-label">连击</span>
+          <strong id="combo-value">0</strong>
+        </div>
+        <div class="hud-actions">
+          <button id="audio-button" type="button" aria-pressed="false">声音开</button>
+          <button id="restart-button" type="button">重开</button>
+        </div>
       </section>
 
       <canvas id="game-canvas" width="960" height="540" aria-label="反重力快递游戏画布"></canvas>
@@ -27,6 +34,13 @@
       <section class="status-panel" aria-live="polite">
         <h1>反重力快递</h1>
         <p id="status-text">按空格或 Enter 开始配送。</p>
+      </section>
+
+      <section class="leaderboard" aria-label="本机排行榜">
+        <h2>本机排行榜</h2>
+        <ol id="leaderboard-list">
+          <li>暂无通关记录</li>
+        </ol>
       </section>
     </main>
 

@@ -51,20 +51,38 @@ button {
   display: block;
   color: var(--muted);
   font-size: 12px;
+  white-space: nowrap;
 }
 
 .hud strong {
   font-size: 22px;
 }
 
-#restart-button {
+.hud-actions {
+  display: flex;
+  gap: 8px;
+}
+
+#restart-button,
+#audio-button {
   min-width: 72px;
   height: 38px;
   border: 0;
   border-radius: 7px;
   color: white;
-  background: var(--accent);
   cursor: pointer;
+}
+
+#restart-button {
+  background: var(--accent);
+}
+
+#audio-button {
+  background: #3f6572;
+}
+
+#audio-button[aria-pressed="true"] {
+  background: var(--muted);
 }
 
 #game-canvas {
@@ -106,6 +124,28 @@ button {
   color: var(--muted);
 }
 
+.leaderboard {
+  padding: 10px 2px 0;
+}
+
+.leaderboard h2 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+
+.leaderboard ol {
+  margin: 0;
+  padding-left: 22px;
+  color: var(--muted);
+  display: grid;
+  gap: 3px;
+}
+
+.leaderboard li::marker {
+  color: var(--accent-2);
+  font-weight: 700;
+}
+
 @media (max-width: 640px) {
   .game-shell {
     width: min(100vw - 20px, 1100px);
@@ -116,8 +156,18 @@ button {
     gap: 10px;
   }
 
+  .hud-actions {
+    gap: 6px;
+  }
+
   .hud strong {
     font-size: 18px;
+  }
+
+  #restart-button,
+  #audio-button {
+    min-width: 62px;
+    height: 36px;
   }
 
   .control-button {
@@ -126,5 +176,9 @@ button {
 
   .status-panel h1 {
     font-size: 22px;
+  }
+
+  .leaderboard h2 {
+    font-size: 15px;
   }
 }
